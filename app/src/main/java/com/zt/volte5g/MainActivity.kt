@@ -7,13 +7,13 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.view.View
+import android.telephony.SubscriptionManager
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.zt.volte5g.databinding.ActivityMainBinding
 import rikka.shizuku.Shizuku
 
@@ -44,6 +44,7 @@ class MainActivity : AppCompatActivity() {
         bindDeviceCard()
         loadSwitches()
         bindListeners()
+        updateSimButtonLabel()
 
         Shizuku.addBinderReceivedListenerSticky(binderReceivedListener)
         Shizuku.addBinderDeadListener(binderDeadListener)
@@ -57,6 +58,7 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         updateShizukuStatus()
         updateStatusInfo()
+        updateSimButtonLabel()
     }
 
     override fun onDestroy() {
@@ -70,7 +72,10 @@ class MainActivity : AppCompatActivity() {
         requestCode: Int, permissions: Array<out String>, grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQ_READ_PHONE_STATE) updateStatusInfo()
+        if (requestCode == REQ_READ_PHONE_STATE) {
+            updateStatusInfo()
+            updateSimButtonLabel()
+        }
     }
 
     private fun requestReadPhoneStateIfNeeded() {
@@ -169,32 +174,114 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showNrModeSelection() {
-        val items = arrayOf(
-            getString(R.string.nr_mode_both),
-            getString(R.string.nr_mode_sa),
-            getString(R.string.nr_mode_nsa)
-        )
-        val checked = when (prefs.getInt(Prefs.NR_MODE, Prefs.NR_MODE_BOTH)) {
-            Prefs.NR_MODE_SA -> 1
-            Prefs.NR_MODE_NSA -> 2
-            else -> 0
+    // -------------------------------------------------------------------------
+    // SIM 选择（系统设置同款双行单选列表：运营商名 + 卡槽标识，只列实际插卡的卡槽）
+    // -------------------------------------------------------------------------
+
+    private fun updateSimButtonLabel() {
+        binding.btnSelectSim.text = getString(R.string.sim_target_fmt, currentSimLabel())
+    }
+
+    private fun currentSimLabel(): String = when (prefs.getInt(Prefs.KEY_SELECTED_SUB, -1)) {
+        1 -> slotLabel(1, carrierNameForSlot(0))
+        2 -> slotLabel(2, carrierNameForSlot(1))
+        else -> getString(R.string.all_sims)
+    }
+
+    private fun slotLabel(slotNumber: Int, carrier: String?): String =
+        if (carrier.isNullOrBlank()) {
+            getString(R.string.sim_slot_plain_fmt, slotNumber)
+        } else {
+            getString(R.string.sim_slot_fmt, slotNumber, carrier)
         }
-        AlertDialog.Builder(this)
+
+    /** 读取各卡槽（槽序号 0 起）的运营商名；无权限或无 SIM 时返回 null */
+    private fun activeSimInfos(): List<Pair<Int, String?>>? = runCatching {
+        val sm = getSystemService(SubscriptionManager::class.java) ?: return null
+        sm.activeSubscriptionInfoList?.map { info ->
+            info.simSlotIndex to
+                (info.displayName ?: info.carrierName)?.toString()?.takeIf { it.isNotBlank() }
+        }
+    }.getOrNull()
+
+    private fun carrierNameForSlot(slotIndex: Int): String? =
+        activeSimInfos()?.firstOrNull { it.first == slotIndex }?.second
+
+    /** 构造 SIM 选项：运营商名为标题、卡槽标识为副标题；读不到时只显示卡槽 */
+    private fun buildSimOptions(): List<ChoiceItem> {
+        val infos = activeSimInfos()
+        val options = mutableListOf<ChoiceItem>()
+        val slot1 = infos?.firstOrNull { it.first == 0 }
+        val slot2 = infos?.firstOrNull { it.first == 1 }
+        // 能读到订阅信息时只列出插了卡的卡槽；读不到时两个卡槽都列出
+        if (infos == null || slot1 != null) {
+            options += ChoiceItem(
+                title = slot1?.second ?: getString(R.string.sim_slot_plain_fmt, 1),
+                subtitle = if (slot1?.second != null) getString(R.string.sim_slot_plain_fmt, 1) else null,
+                value = 1,
+            )
+        }
+        if (infos == null || slot2 != null) {
+            options += ChoiceItem(
+                title = slot2?.second ?: getString(R.string.sim_slot_plain_fmt, 2),
+                subtitle = if (slot2?.second != null) getString(R.string.sim_slot_plain_fmt, 2) else null,
+                value = 2,
+            )
+        }
+        options += ChoiceItem(
+            title = getString(R.string.all_sims),
+            subtitle = getString(R.string.all_sims_desc),
+            value = -1,
+        )
+        return options
+    }
+
+    private fun showSimSelection() {
+        val items = buildSimOptions()
+        val current = prefs.getInt(Prefs.KEY_SELECTED_SUB, -1)
+        val checked = items.indexOfFirst { it.value == current }.coerceAtLeast(0)
+        val adapter = ChoiceAdapter(this, items, checked)
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.select_sim)
+            .setSingleChoiceItems(adapter, checked) { dialog, which ->
+                prefs.edit().putInt(Prefs.KEY_SELECTED_SUB, items[which].value).apply()
+                updateSimButtonLabel()
+                dialog.dismiss()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun showNrModeSelection() {
+        val current = prefs.getInt(Prefs.NR_MODE, Prefs.NR_MODE_BOTH)
+        val items = listOf(
+            ChoiceItem(
+                getString(R.string.nr_mode_both),
+                getString(R.string.nr_mode_both_desc),
+                Prefs.NR_MODE_BOTH,
+            ),
+            ChoiceItem(
+                getString(R.string.nr_mode_sa),
+                getString(R.string.nr_mode_sa_desc),
+                Prefs.NR_MODE_SA,
+            ),
+            ChoiceItem(
+                getString(R.string.nr_mode_nsa),
+                getString(R.string.nr_mode_nsa_desc),
+                Prefs.NR_MODE_NSA,
+            ),
+        )
+        val checked = items.indexOfFirst { it.value == current }.coerceAtLeast(0)
+        val adapter = ChoiceAdapter(this, items, checked)
+
+        MaterialAlertDialogBuilder(this)
             .setTitle(R.string.nr_mode_dialog_title)
-            .setSingleChoiceItems(items, checked) { dialog, which ->
-                prefs.edit().putInt(
-                    Prefs.NR_MODE,
-                    when (which) {
-                        1 -> Prefs.NR_MODE_SA
-                        2 -> Prefs.NR_MODE_NSA
-                        else -> Prefs.NR_MODE_BOTH
-                    }
-                ).apply()
+            .setSingleChoiceItems(adapter, checked) { dialog, which ->
+                prefs.edit().putInt(Prefs.NR_MODE, items[which].value).apply()
                 updateNrModeLabel()
                 dialog.dismiss()
             }
-            .setMessage(getString(R.string.nr_mode_sa_hint))
             .setNegativeButton(R.string.cancel, null)
             .show()
     }
@@ -288,7 +375,7 @@ class MainActivity : AppCompatActivity() {
                     Intent(this, MainActivity::class.java)
                         .setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
                 )
-                AlertDialog.Builder(this)
+                MaterialAlertDialogBuilder(this)
                     .setTitle(R.string.apply_success_title)
                     .setMessage(R.string.apply_success_msg)
                     .setPositiveButton(R.string.goto_network_settings) { _, _ ->
@@ -298,34 +385,6 @@ class MainActivity : AppCompatActivity() {
                     .show()
             }
         }.start()
-    }
-
-    private fun showSimSelection() {
-        val items = arrayOf(
-            getString(R.string.sim_1),
-            getString(R.string.sim_2),
-            getString(R.string.all_sims)
-        )
-        val checked = when (prefs.getInt(Prefs.KEY_SELECTED_SUB, -1)) {
-            1 -> 0
-            2 -> 1
-            else -> 2
-        }
-        AlertDialog.Builder(this)
-            .setTitle(R.string.select_sim)
-            .setSingleChoiceItems(items, checked) { dialog, which ->
-                prefs.edit().putInt(
-                    Prefs.KEY_SELECTED_SUB,
-                    when (which) {
-                        0 -> 1
-                        1 -> 2
-                        else -> -1
-                    }
-                ).apply()
-                dialog.dismiss()
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
     }
 
     companion object {

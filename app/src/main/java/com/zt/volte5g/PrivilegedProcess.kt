@@ -152,8 +152,9 @@ class PrivilegedProcess : Instrumentation() {
         }
         val slot = getPrefs(context).getInt(Prefs.KEY_SELECTED_SUB, -1)
         val subIds = when (slot) {
-            1 -> intArrayOf(allSubIds[0])
-            2 -> if (allSubIds.size >= 2) intArrayOf(allSubIds[1]) else allSubIds
+            // 按物理卡槽定位（界面上“SIM 1/2”即卡槽 1/2）；读不到订阅信息时回退列表顺序
+            1 -> subIdsForSlot(sm, 0) ?: intArrayOf(allSubIds[0])
+            2 -> subIdsForSlot(sm, 1) ?: (if (allSubIds.size >= 2) intArrayOf(allSubIds[1]) else allSubIds)
             else -> allSubIds
         }
         var okCount = 0
@@ -161,6 +162,19 @@ class PrivilegedProcess : Instrumentation() {
             if (applyTo(cm, subId, persistent, viaShell)) okCount++
         }
         Log.i(TAG, "覆写完成：$okCount/${subIds.size} 张 SIM 成功（persistent=$persistent）")
+    }
+
+    /** 按物理卡槽序号（0 起）查 subId；读不到订阅信息时返回 null 由调用方回退 */
+    private fun subIdsForSlot(sm: SubscriptionManager, slotIndex: Int): IntArray? {
+        return try {
+            sm.activeSubscriptionInfoList
+                ?.filter { it.simSlotIndex == slotIndex }
+                ?.map { it.subscriptionId }
+                ?.toIntArray()
+                ?.takeIf { it.isNotEmpty() }
+        } catch (e: Throwable) {
+            null
+        }
     }
 
     private fun applyTo(

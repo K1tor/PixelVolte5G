@@ -39,7 +39,9 @@
     <string name="nr_mode_sa">仅 SA</string>
     <string name="nr_mode_nsa">仅 NSA</string>
     <string name="nr_mode_dialog_title">选择 5G 组网模式</string>
-    <string name="nr_mode_sa_hint">部分运营商在 NSA+SA 下 5G 不注册，可尝试“仅 SA”</string>
+    <string name="nr_mode_both_desc">非独立组网 + 独立组网，兼容性最好（推荐）</string>
+    <string name="nr_mode_sa_desc">仅独立组网；部分运营商 5G 需此模式才能注册</string>
+    <string name="nr_mode_nsa_desc">仅非独立组网（锚定 LTE）</string>
     <string name="vowifi">VoWiFi（WiFi 通话）</string>
     <string name="vowifi_desc">开放 WiFi 通话能力与模式设置项</string>
     <string name="vt">VoLTE 视频通话</string>
@@ -49,9 +51,11 @@
     <string name="ut">UT（补充业务）</string>
     <string name="ut_desc">允许通过 IMS 执行呼叫转移等补充业务</string>
 
-    <string name="sim_1">仅 SIM 1</string>
-    <string name="sim_2">仅 SIM 2</string>
+    <string name="sim_slot_plain_fmt">SIM %1$d</string>
+    <string name="sim_slot_fmt">SIM %1$d（%2$s）</string>
+    <string name="sim_target_fmt">应用到：%1$s</string>
     <string name="all_sims">全部 SIM</string>
+    <string name="all_sims_desc">应用到所有已插卡的卡槽</string>
     <string name="select_sim">应用到哪张 SIM？</string>
 
     <string name="shizuku_not_running">未运行</string>
