@@ -1,6 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Pixel VoLTE/5G 助手</string>
+    <string name="subtitle">Shizuku 运营商配置覆写 · 无需 Root · 免费开源</string>
+
+    <string name="device_card_title">设备</string>
+    <string name="status_card_title">状态</string>
+    <string name="section_calls">通话功能</string>
+    <string name="section_network">网络功能</string>
+    <string name="applying">正在应用…</string>
+
+    <string name="unsupported_no_telephony">此设备没有蜂窝网络模块，本工具无法使用</string>
+    <string name="unsupported_no_5g">此机型不支持 5G，相关开关已停用</string>
+    <string name="untested_device">非 Pixel 机型：机制未经验证，可能不生效</string>
+    <string name="badge_pixel">Pixel 设备</string>
+    <string name="badge_not_pixel">非 Pixel 设备</string>
+    <string name="badge_5g_nsa_sa">5G NSA+SA</string>
+    <string name="badge_5g_nsa">5G（仅 NSA）</string>
+    <string name="badge_no_5g">不支持 5G</string>
+    <string name="badge_no_telephony">无蜂窝模块</string>
+    <string name="android_version_fmt">Android %1$s（API %2$d）</string>
+    <string name="device_name_fmt">%1$s（%2$s）</string>
 
     <string name="shizuku_card_title">Shizuku 状态</string>
     <string name="btn_open_shizuku">打开 Shizuku</string>

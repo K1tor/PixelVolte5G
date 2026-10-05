@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.View
@@ -12,6 +13,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import com.zt.volte5g.databinding.ActivityMainBinding
 import rikka.shizuku.Shizuku
 
@@ -19,6 +21,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var prefs: SharedPreferences
+    private lateinit var profile: DeviceProfile
 
     private val binderReceivedListener = Shizuku.OnBinderReceivedListener {
         runOnUiThread { updateShizukuStatus() }
@@ -35,8 +38,10 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         prefs = getSharedPreferences(Prefs.NAME, MODE_PRIVATE)
+        profile = DeviceSupport.detect(this)
 
         requestReadPhoneStateIfNeeded()
+        bindDeviceCard()
         loadSwitches()
         bindListeners()
 
@@ -78,14 +83,56 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun bindDeviceCard() {
+        binding.tvDeviceName.text = if (profile.isPixel) {
+            getString(R.string.device_name_fmt, profile.name, profile.device)
+        } else {
+            profile.name
+        }
+        binding.tvDeviceAndroid.text = getString(
+            R.string.android_version_fmt, Build.VERSION.RELEASE, Build.VERSION.SDK_INT
+        )
+        binding.chipDeviceBadge.text = getString(
+            if (profile.isPixel) R.string.badge_pixel else R.string.badge_not_pixel
+        )
+        binding.chip5gBadge.text = getString(
+            when {
+                !profile.telephony -> R.string.badge_no_telephony
+                !profile.has5G -> R.string.badge_no_5g
+                profile.hasSa -> R.string.badge_5g_nsa_sa
+                else -> R.string.badge_5g_nsa
+            }
+        )
+        when {
+            !profile.telephony -> {
+                binding.tvDeviceNote.setText(R.string.unsupported_no_telephony)
+                binding.tvDeviceNote.isVisible = true
+            }
+            profile.isPixel && !profile.has5G -> {
+                binding.tvDeviceNote.setText(R.string.unsupported_no_5g)
+                binding.tvDeviceNote.isVisible = true
+            }
+            !profile.isPixel -> {
+                binding.tvDeviceNote.setText(R.string.untested_device)
+                binding.tvDeviceNote.isVisible = true
+            }
+            else -> binding.tvDeviceNote.isVisible = false
+        }
+        // 无 5G 能力的机型禁用 5G / VoNR 开关
+        binding.sw5gNr.isEnabled = profile.has5G
+        binding.swVonr.isEnabled = profile.hasVoNR
+        binding.btnNrMode.isVisible = profile.has5G && binding.sw5gNr.isChecked
+    }
+
     private fun loadSwitches() {
         binding.swVolte.isChecked = prefs.getBoolean(Prefs.VOLTE, true)
-        binding.swVonr.isChecked = prefs.getBoolean(Prefs.VONR, true)
-        binding.sw5gNr.isChecked = prefs.getBoolean(Prefs.NR5G, true)
+        binding.swVonr.isChecked = prefs.getBoolean(Prefs.VONR, true) && profile.hasVoNR
+        binding.sw5gNr.isChecked = prefs.getBoolean(Prefs.NR5G, true) && profile.has5G
         binding.swVowifi.isChecked = prefs.getBoolean(Prefs.VOWIFI, true)
         binding.swVt.isChecked = prefs.getBoolean(Prefs.VT, true)
         binding.swCrossSim.isChecked = prefs.getBoolean(Prefs.CROSS_SIM, true)
         binding.swUt.isChecked = prefs.getBoolean(Prefs.UT, true)
+        updateNrModeLabel()
     }
 
     private fun bindListeners() {
@@ -100,6 +147,7 @@ class MainActivity : AppCompatActivity() {
         ).forEach { (switch, key) ->
             switch.setOnCheckedChangeListener { _, checked ->
                 prefs.edit().putBoolean(key, checked).apply()
+                if (switch === binding.sw5gNr) update5gModeVisibility()
             }
         }
 
@@ -107,7 +155,10 @@ class MainActivity : AppCompatActivity() {
         binding.btnSelectSim.setOnClickListener { showSimSelection() }
         binding.btnOpenShizuku.setOnClickListener { openShizukuApp() }
         binding.btnNrMode.setOnClickListener { showNrModeSelection() }
-        updateNrModeLabel()
+    }
+
+    private fun update5gModeVisibility() {
+        binding.btnNrMode.isVisible = profile.has5G && binding.sw5gNr.isChecked
     }
 
     private fun updateNrModeLabel() {
@@ -161,9 +212,9 @@ class MainActivity : AppCompatActivity() {
             !shizukuGranted() -> Triple(R.string.shizuku_no_permission, 0xFFFF9800.toInt(), false)
             else -> Triple(R.string.shizuku_ready, 0xFF4CAF50.toInt(), true)
         }
-        binding.tvShizukuStatus.text = getString(R.string.shizuku_status_fmt, getString(textRes))
-        binding.tvShizukuStatus.setTextColor(color)
-        binding.btnApply.isEnabled = ready
+        binding.chipShizuku.text = getString(R.string.shizuku_status_fmt, getString(textRes))
+        binding.chipShizuku.setTextColor(color)
+        binding.btnApply.isEnabled = ready && profile.telephony
 
         if (shizukuAlive() && !shizukuGranted()) requestShizukuPermission()
     }
@@ -187,21 +238,25 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateStatusInfo() {
         val persistent = runCatching { ShizukuProvider.canPersistent(this) }.getOrDefault(false)
-        binding.tvPersistentMode.text = getString(
+        binding.chipPersistent.text = getString(
             R.string.persistent_mode_fmt,
             getString(if (persistent) R.string.yes else R.string.no)
         )
-        binding.tvPersistentMode.setTextColor(if (persistent) COLOR_OK else COLOR_WARN)
+        binding.chipPersistent.setTextColor(if (persistent) COLOR_OK else COLOR_WARN)
 
         val applied = !runCatching { ShizukuProvider.needOverride(this) }.getOrDefault(true)
-        binding.tvConfigStatus.text = getString(
+        binding.chipConfig.text = getString(
             R.string.config_status_fmt,
             getString(if (applied) R.string.applied else R.string.not_applied)
         )
-        binding.tvConfigStatus.setTextColor(if (applied) COLOR_OK else COLOR_IDLE)
+        binding.chipConfig.setTextColor(if (applied) COLOR_OK else COLOR_IDLE)
     }
 
     private fun applyConfiguration() {
+        if (!profile.telephony) {
+            Toast.makeText(this, R.string.unsupported_no_telephony, Toast.LENGTH_LONG).show()
+            return
+        }
         if (!shizukuAlive()) {
             Toast.makeText(this, R.string.shizuku_not_running_msg, Toast.LENGTH_LONG).show()
             return
@@ -214,6 +269,9 @@ class MainActivity : AppCompatActivity() {
 
         ShizukuProvider.applyNow(this)
         Toast.makeText(this, R.string.apply_started, Toast.LENGTH_SHORT).show()
+        binding.btnApply.isEnabled = false
+        binding.btnApply.setText(R.string.applying)
+        binding.progressApply.isVisible = true
 
         // Instrumentation 会让进程短暂切到后台，3 秒后拉回界面并刷新状态
         Thread {
@@ -222,6 +280,9 @@ class MainActivity : AppCompatActivity() {
             } catch (_: InterruptedException) {
             }
             runOnUiThread {
+                binding.btnApply.setText(R.string.btn_apply)
+                binding.progressApply.isVisible = false
+                updateShizukuStatus()
                 updateStatusInfo()
                 startActivity(
                     Intent(this, MainActivity::class.java)

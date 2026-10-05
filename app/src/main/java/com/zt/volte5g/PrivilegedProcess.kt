@@ -19,6 +19,7 @@ import android.system.Os
 import android.telephony.CarrierConfigManager
 import android.telephony.SubscriptionManager
 import android.util.Log
+import com.android.internal.telephony.ICarrierConfigLoader
 import rikka.shizuku.ShizukuBinderWrapper
 
 /**
@@ -54,11 +55,13 @@ class PrivilegedProcess : Instrumentation() {
 
     /** 普通路径：在本进程内完成 shell 身份委托并写入（非持久化） */
     private fun applyInPlace(context: Context) {
+        var delegated = false
         try {
             val am = IActivityManager.Stub.asInterface(
                 ShizukuBinderWrapper(ServiceManager.getService(Context.ACTIVITY_SERVICE))
             )
             am.startDelegateShellPermissionIdentity(Os.getuid(), null)
+            delegated = true
             try {
                 grantReadPhoneState(context)
                 overrideCarrierConfig(context, persistent = false)
@@ -66,10 +69,26 @@ class PrivilegedProcess : Instrumentation() {
                 am.stopDelegateShellPermissionIdentity()
             }
         } catch (e: Throwable) {
-            Log.e(TAG, "applyInPlace 失败", e)
+            // 设备缺少 startDelegateShellPermissionIdentity（Android 12 及以下）或委托失败时，
+            // 回退为以 shell 身份直调 ICarrierConfigLoader（旧版本没有 isShell 拦截）
+            Log.w(TAG, "委托路径失败（delegated=$delegated），回退 shell 直调: ${e.message}")
+        }
+        if (!delegated) {
+            try {
+                grantReadPhoneState(context)
+                overrideCarrierConfig(context, persistent = false, viaShell = shellCarrierConfigLoader())
+            } catch (e: Throwable) {
+                Log.e(TAG, "shell 直调路径失败", e)
+            }
         }
         finish(0, Bundle())
     }
+
+    /** 以 shell 身份（ShizukuBinderWrapper）直连 carrier_config 服务 */
+    private fun shellCarrierConfigLoader(): ICarrierConfigLoader =
+        ICarrierConfigLoader.Stub.asInterface(
+            ShizukuBinderWrapper(ServiceManager.getService("carrier_config"))
+        )
 
     /** SDK 沙箱路径：注册回调 binder，等待 Provider 的 shell 委托生效后触发 */
     private fun startSandboxCallback(context: Context) {
@@ -119,7 +138,11 @@ class PrivilegedProcess : Instrumentation() {
     }
 
     /** 对选定的 SIM 逐个写入运营商配置覆写，持久化失败时反向重试一次 */
-    private fun overrideCarrierConfig(context: Context, persistent: Boolean) {
+    private fun overrideCarrierConfig(
+        context: Context,
+        persistent: Boolean,
+        viaShell: ICarrierConfigLoader? = null,
+    ) {
         val cm = context.getSystemService(CarrierConfigManager::class.java) ?: return
         val sm = context.getSystemService(SubscriptionManager::class.java) ?: return
         val allSubIds = activeSubscriptionIds(sm)
@@ -135,20 +158,29 @@ class PrivilegedProcess : Instrumentation() {
         }
         var okCount = 0
         for (subId in subIds) {
-            if (applyTo(cm, subId, persistent)) okCount++
+            if (applyTo(cm, subId, persistent, viaShell)) okCount++
         }
         Log.i(TAG, "覆写完成：$okCount/${subIds.size} 张 SIM 成功（persistent=$persistent）")
     }
 
-    private fun applyTo(cm: CarrierConfigManager, subId: Int, persistent: Boolean): Boolean {
+    private fun applyTo(
+        cm: CarrierConfigManager,
+        subId: Int,
+        persistent: Boolean,
+        viaShell: ICarrierConfigLoader?,
+    ): Boolean {
         val values = buildConfigBundle()
         values.putInt(Keys.KEY_CONFIG_VERSION, BuildConfig.VERSION_CODE)
         val applied = try {
-            Hidden.call(
-                cm, "overrideConfig",
-                arrayOf(Int::class.javaPrimitiveType!!, PersistableBundle::class.java, Boolean::class.javaPrimitiveType!!),
-                arrayOf(subId, values, persistent)
-            )
+            if (viaShell != null) {
+                viaShell.overrideConfig(subId, values, persistent)
+            } else {
+                Hidden.call(
+                    cm, "overrideConfig",
+                    arrayOf(Int::class.javaPrimitiveType!!, PersistableBundle::class.java, Boolean::class.javaPrimitiveType!!),
+                    arrayOf(subId, values, persistent)
+                )
+            }
             true
         } catch (e: Throwable) {
             Log.w(TAG, "overrideConfig(persistent=$persistent) 被拒绝，反向重试: ${e.message}")

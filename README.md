@@ -38,9 +38,23 @@
 - **5G 已开启但不注册**：把应用内“5G 组网模式”切为**仅 SA**（`carrier_nr_availabilities_int_array` 仅含 SA），重新应用并重启。部分运营商在 NSA+SA 组合下 NR 无法注册，这是社区验证过的解法。
 - Google Play 系统更新（Mainline）不涉及 `com.android.phone`/CarrierConfigLoader（随 OTA 更新），对本机制无影响。
 
+## 支持机型（v1.1 起）
+
+应用会自动识别机型并按能力启用/禁用功能开关：
+
+| 机型 | 5G | VoNR | 说明 |
+| --- | --- | --- | --- |
+| Pixel 6 / 6a / 6 Pro 及之后全部 Tensor 机型 | NSA+SA | ✅ | 完整支持（含 9 系列、Fold、a 系列） |
+| Pixel 5 / 5a / 4a (5G) | NSA | ❌ | 无 SA 语音能力 |
+| Pixel 4 / 4a / 3 系列 | ❌ | ❌ | 5G / VoNR 开关自动停用 |
+| Pixel Tablet（tangorpro） | - | - | 无蜂窝模块，工具不可用 |
+| 非 Pixel 设备 | 视情况 | 视情况 | 机制未经验证，仍可尝试 |
+
+系统版本兼容：Android 12（API 31）起可用——A13+ 走"Instrumentation + shell 权限委托"路径；Android 12 设备自动回退为以 shell 身份直调 `ICarrierConfigLoader`。
+
 ## 环境要求
 
-- Pixel 设备（Tensor 机型，Pixel 6 及以后；Pixel 9 Pro XL 完全支持），Android 12+（14/15/16/17 已按新版补丁适配）
+- Pixel 设备（Pixel 3 及以后；Tensor 机型体验最佳），Android 12+（14/15/16/17 已按新版补丁适配）
 - [Shizuku](https://github.com/RikkaApps/Shizuku/releases)（Play 商店或 GitHub 安装），通过**无线调试**启动（无需电脑），或 ADB 启动
 - Android 11+ 的“无线调试”开发者选项
 
