@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 信号柱 -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M32,60h9v18h-9z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M46,52h9v26h-9z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M60,44h9v34h-9z" />
+    <path
+        android:fillColor="#FFB2DFDB"
+        android:pathData="M74,36h9v42h-9z" />
+    <!-- 顶部波纹 -->
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3.5"
+        android:fillColor="#00000000"
+        android:pathData="M36.5,32 a24,24 0 0 1 35,0" />
+    <path
+        android:strokeColor="#FFB2DFDB"
+        android:strokeWidth="3.5"
+        android:fillColor="#00000000"
+        android:pathData="M41.5,38.5 a17,17 0 0 1 25,0" />
+</vector>

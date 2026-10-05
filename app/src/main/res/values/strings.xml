@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Pixel VoLTE/5G 助手</string>
+
+    <string name="shizuku_card_title">Shizuku 状态</string>
+    <string name="btn_open_shizuku">打开 Shizuku</string>
+    <string name="btn_apply">应用配置</string>
+    <string name="btn_select_sim">选择 SIM</string>
+    <string name="btn_refresh_status">刷新状态</string>
+
+    <string name="features_title">功能开关（写入运营商配置覆写）</string>
+    <string name="volte">VoLTE（高清语音）</string>
+    <string name="volte_desc">强制开放 VoLTE 能力并在设置中显示“增强 4G LTE 模式”开关</string>
+    <string name="vonr">VoNR（5G 新通话）</string>
+    <string name="vonr_desc">开启 5G SA 下的 VoNR 语音并在设置中显示开关</string>
+    <string name="nr_5g">5G（NR）</string>
+    <string name="nr_5g_desc">开放 5G NR 能力，可在下方选择组网模式</string>
+    <string name="nr_mode_label">5G 组网模式</string>
+    <string name="nr_mode_both">NSA + SA</string>
+    <string name="nr_mode_sa">仅 SA</string>
+    <string name="nr_mode_nsa">仅 NSA</string>
+    <string name="nr_mode_dialog_title">选择 5G 组网模式</string>
+    <string name="nr_mode_sa_hint">部分运营商在 NSA+SA 下 5G 不注册，可尝试“仅 SA”</string>
+    <string name="vowifi">VoWiFi（WiFi 通话）</string>
+    <string name="vowifi_desc">开放 WiFi 通话能力与模式设置项</string>
+    <string name="vt">VoLTE 视频通话</string>
+    <string name="vt_desc">开放视频通话（VT）能力</string>
+    <string name="cross_sim">跨 SIM 通话</string>
+    <string name="cross_sim_desc">允许使用其他 SIM 的流量进行 IMS 通话</string>
+    <string name="ut">UT（补充业务）</string>
+    <string name="ut_desc">允许通过 IMS 执行呼叫转移等补充业务</string>
+
+    <string name="sim_1">仅 SIM 1</string>
+    <string name="sim_2">仅 SIM 2</string>
+    <string name="all_sims">全部 SIM</string>
+    <string name="select_sim">应用到哪张 SIM？</string>
+
+    <string name="shizuku_not_running">未运行</string>
+    <string name="shizuku_no_permission">未授权</string>
+    <string name="shizuku_ready">已就绪</string>
+    <string name="shizuku_not_installed">未检测到 Shizuku 应用，请先安装</string>
+    <string name="update_shizuku">Shizuku 版本过旧，请升级到 v11 以上</string>
+    <string name="shizuku_status_fmt">Shizuku：%1$s</string>
+    <string name="shizuku_no_permission_msg">尚未授予 Shizuku 权限，请在弹窗中允许。</string>
+    <string name="persistent_mode_fmt">持久化覆写：%1$s</string>
+    <string name="config_status_fmt">配置状态：%1$s</string>
+    <string name="yes">支持</string>
+    <string name="no">不支持</string>
+    <string name="applied">已应用</string>
+    <string name="not_applied">未应用</string>
+
+    <string name="shizuku_not_running_msg">Shizuku 未运行。请先在 Shizuku 应用中通过“无线调试”或 ADB 启动服务。</string>
+    <string name="apply_started">已触发应用，正在通过 Instrumentation 写入运营商配置…</string>
+    <string name="apply_success_title">配置已写入</string>
+    <string name="apply_success_msg">运营商配置覆写已提交。稍等片刻后，请开关一次飞行模式或重启手机使其完全生效，然后到 设置 → 网络和互联网 → SIM 卡 中查看 VoLTE / 5G 开关。</string>
+    <string name="goto_network_settings">打开网络设置</string>
+    <string name="later">稍后</string>
+    <string name="cancel">取消</string>
+
+    <string name="tips_title">说明</string>
+    <string name="tips">
+        • 需要先安装并启动 Shizuku（无线调试启动即可，无需 Root），建议使用最新版（13.6 以上，适配 Android 16/17 QPR）。\n
+        • 写入的是“运营商配置覆写”（与 Pixel IMS 同原理），持久化支持视系统安全补丁级别而定；最新补丁上多为非持久化，重启后需重新应用（Shizuku 重连时会自动恢复）。\n
+        • 系统大版本更新后若失效：在 Shizuku 中停用服务 → 重新启动并授权 → 重新点“应用配置”。\n
+        • 5G 开关已开但不注册：尝试把“5G 组网模式”切换为“仅 SA”，应用后重启。\n
+        • VoLTE 是否真正注册还取决于运营商网络与 SIM 开通状态（应用会一并尝试打开 IMS 开通位）。\n
+        • 如开关未生效：开关一次飞行模式；或重启；或稍后重新点击“应用配置”。
+    </string>
+</resources>

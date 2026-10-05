@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- 用于读取当前 SIM / 订阅信息（运行时申请） -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
+    <queries>
+        <package android:name="moe.shizuku.privileged.api" />
+        <package android:name="rikka.sui" />
+    </queries>
+
+    <!-- vvb2060 方案的 Instrumentation 入口：以自身进程为目标启动，
+         从而在应用进程内持有 shell 委托身份并调用隐藏 API。
+         targetPackage 必须与 applicationId 一致。 -->
+    <instrumentation
+        android:name=".PrivilegedProcess"
+        android:targetPackage="${applicationId}" />
+
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Volte5G">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Shizuku 通过该 Provider 投递 binder；注意不设置 android:permission，
+             改为在 call() 里自行校验调用方 uid（shell / root / 自身 SDK 沙箱） -->
+        <provider
+            android:name=".ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:enabled="true"
+            android:exported="true"
+            android:multiprocess="false"
+            tools:ignore="ExportedContentProvider" />
+    </application>
+
+</manifest>
