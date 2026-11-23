@@ -5,14 +5,14 @@ plugins {
 
 android {
     namespace = "com.zt.volte5g"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.zt.volte5g"
         minSdk = 31
-        targetSdk = 35
-        versionCode = 3
-        versionName = "1.2"
+        targetSdk = 36
+        versionCode = 4
+        versionName = "1.3"
     }
 
     buildTypes {

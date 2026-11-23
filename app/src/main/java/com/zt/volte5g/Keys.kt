@@ -60,4 +60,20 @@ object Prefs {
     const val NR_MODE_BOTH = 0
     const val NR_MODE_SA = 1
     const val NR_MODE_NSA = 2
+
+    /** 待执行的“恢复默认”标记：下次应用时改为清除整份覆写 */
+    const val PENDING_CLEAR = "pending_clear"
+
+    /** 界面偏好：高级功能分区是否展开 */
+    const val UI_ADVANCED_OPEN = "ui_advanced_open"
+
+    // ---- 最近一次应用的真实结果（由 PrivilegedProcess 在 Instrumentation 内写入）----
+    const val LAST_APPLY_AT = "last_apply_at"
+    const val LAST_APPLY_OK = "last_apply_ok"
+    const val LAST_APPLY_TOTAL = "last_apply_total"
+    const val LAST_APPLY_SUCCEEDED = "last_apply_succeeded"
+    const val LAST_APPLY_PERSISTENT = "last_apply_persistent"
+    const val LAST_CLEANUP_OK = "last_cleanup_ok"
+    const val LAST_APPLY_CLEAR = "last_apply_clear"
+    const val LAST_APPLY_ERROR = "last_apply_error"
 }

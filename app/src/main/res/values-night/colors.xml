@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 状态色（深色主题）：提升亮度保证对比度 -->
+    <color name="status_ok">#8BD5A0</color>
+    <color name="status_warn">#FDD663</color>
+    <color name="status_error">#F2B8B5</color>
+    <color name="status_idle">#C4C7C5</color>
+
+    <color name="status_ok_bg">#3381C995</color>
+    <color name="status_warn_bg">#33FDD663</color>
+    <color name="status_error_bg">#33F2B8B5</color>
+    <color name="status_idle_bg">#33C4C7C5</color>
+</resources>

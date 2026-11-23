@@ -82,8 +82,22 @@ class ShizukuProvider : rikka.shizuku.ShizukuProvider() {
         /** 用户点击“应用配置”：强制重新覆写 */
         fun applyNow(context: Context) {
             showVoLTE()
+            // 明确的“写入”意图：清掉可能残留的清除标记
+            getPrefs(context).edit().putBoolean(Prefs.PENDING_CLEAR, false).apply()
             startInstrument(context, canPersistent(context))
         }
+
+        /**
+         * 用户点击“恢复默认”：下一次应用改为清除整份覆写（overrideConfig(null)）。
+         * 与“把开关全部关掉”不同，清除会把此前写入的所有键一次性丢弃。
+         */
+        fun clearNow(context: Context) {
+            getPrefs(context).edit().putBoolean(Prefs.PENDING_CLEAR, true).apply()
+            startInstrument(context, canPersistent(context))
+        }
+
+        private fun getPrefs(context: Context): android.content.SharedPreferences =
+            context.getSharedPreferences(Prefs.NAME, Context.MODE_PRIVATE)
 
         /**
          * 以 shell 身份（ShizukuBinderWrapper）启动 Instrumentation。
@@ -124,17 +138,24 @@ class ShizukuProvider : rikka.shizuku.ShizukuProvider() {
                 val am = IActivityManager.Stub.asInterface(
                     ShizukuBinderWrapper(ServiceManager.getService(Context.ACTIVITY_SERVICE))
                 )
-                am.startDelegateShellPermissionIdentity(sdkUid, null)
+                val started = Delegation.start(am, sdkUid)
+                if (!started) {
+                    Logs.e("沙箱委托未能建立，跳过回调")
+                    return
+                }
                 val data = Parcel.obtain()
                 try {
                     callback.transact(1, data, null, 0)
                 } finally {
                     data.recycle()
+                    // 清理失败不应吞掉写入结果，只记录（Android 17 起为带 uid 的签名）
+                    if (!Delegation.stop(am)) {
+                        Logs.w("沙箱委托已生效但清理接口调用失败")
+                    }
                 }
-                am.stopDelegateShellPermissionIdentity()
-                Log.i(TAG, "沙箱委托完成")
+                Logs.i("沙箱委托完成")
             } catch (e: Throwable) {
-                Log.e(TAG, "startSandboxDelegate 失败", e)
+                Logs.e("startSandboxDelegate 失败: ${e.javaClass.simpleName} ${e.message}")
             }
         }
 

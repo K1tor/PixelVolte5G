@@ -4,6 +4,41 @@
 
 适用于 Google 未对当地运营商做 5G/VoLTE 认证的情况（例如国行外版 Pixel 插大陆卡没有 VoLTE/5G 开关）。
 
+| 主界面 | 功能开关 | SIM 选择 | 深色模式 |
+| --- | --- | --- | --- |
+| ![主界面](docs/screenshots/01-main-light.png) | ![功能开关](docs/screenshots/02-features.png) | ![SIM 选择](docs/screenshots/03-sim-picker.png) | ![深色](docs/screenshots/04-main-dark.png) |
+
+## v1.3 更新内容（适 Android 17 QPR2 / `CP4A.261105.040.A1`）
+
+### 系统兼容
+
+- **权限委托清理双签名兼容**：Android 17 起 `IActivityManager.stopDelegateShellPermissionIdentity()` 换成带 UID 的签名。
+  旧实现会在此处抛 `NoSuchMethodError` —— 而此时覆写**其实已经写入成功**，界面却报失败。
+  v1.3 运行时先试带 UID 的签名、再回退无参签名（参考 [pixel-volte-patch #472](https://github.com/kyujin-cho/pixel-volte-patch/issues/472)、[PR #487](https://github.com/kyujin-cho/pixel-volte-patch/pull/487)）。
+- **写入 / 校验 / 清理三态分离**：清理失败不再把已成功的写入改判为失败，只作为诊断信息展示。
+- **按 SIM 回读校验**：写入后回读版本指纹与关键键值，确认真的落到该 subId 的配置里，而不是只看调用有没有抛异常。
+- **编译目标提升**：`compileSdk` / `targetSdk` 35 → 36，版本 1.2 → 1.3（versionCode 4）。
+- **构建号与兼容分级**：界面展示系统构建号、安全补丁、实际探测到的委托清理签名，并给出“已适配 / 按兼容路径 / 旧系统”分级。
+
+### 界面优化
+
+- **主操作固定底部**：长列表滚动时“应用配置”始终可见，不再需要滚回顶部。
+- **状态即真相**：状态胶囊 + “上次应用”真实回执（成功数/总数、是否持久化、清理是否异常）。
+- **设备卡片**新增系统构建号、安全补丁、委托清理签名与兼容判定。
+- **开关行改为系统设置同构样式**：主标题 + 说明 + 右侧开关，整行可点。
+- **“5G 组网模式 / 选择 SIM”改为设置项行**：右侧直接显示当前值，点开才进选择弹窗。
+- **高级功能折叠**：跨 SIM、UT、恢复默认收进默认折叠的分区，减少首屏噪音。
+- **配色规范化**：状态色改为主题资源并补齐 `values-night`，深色模式下对比度正常。
+
+### 行为修正
+
+- **关闭开关现在真的生效**：`overrideConfig` 是合并语义，旧实现只写入“打开”的键，
+  关掉开关后上一次写入的 `true` 仍在。v1.3 对每个开关都写入显式值（关闭 = `false`）。
+- **新增“恢复默认配置”**：以 `overrideConfig(null)` 丢弃整份覆写。
+  注意这与“把所有开关关掉”不同，是彻底撤销的唯一方式。
+- **不再无条件报成功**：旧版固定等 3 秒就弹“配置已写入”。现改为等待真实回执（最多 12 秒），
+  区分成功 / 部分成功 / 失败 / 无回执四种结果。
+
 ## 原理
 
 本应用与知名的 Pixel IMS（vvb2060 v3.1 方案）同一原理：
@@ -27,18 +62,25 @@
 | 持久化覆写 | 重启后仍然生效（系统允许时自动使用） |
 | 非持久化覆写 | 立即生效，但重启或“电话”进程重启后失效，需重新点一次“应用配置” |
 
-## 针对最新系统（Android 17 QPR1，如 CP3A.260905.009）的须知
+## 针对最新系统（Android 17 QPR2，如 CP4A.261105.040.A1）的须知
 
-你的 Pixel 9 Pro XL 若为 `CP3A.260905.009`（Android 17 QPR1，2026-09-05 补丁级别）：
-
-- 该补丁级别已包含 CVE-2025-48617 修复：老的 `setprop persist.dbg.*` 方法与“shell 直接调 overrideConfig”均不可用，本应用已按 v3.1 委托机制实现，无需额外操作。
-- **持久化覆写大概率显示“不支持”**：最新补丁封堵了持久化路径，覆写为非持久化——重启后需重新应用。Shizuku 重连时应用会自动恢复覆写；建议保持 Shizuku 开机自启（无线调试开关保持开启）。
-- Shizuku 请使用 **13.6.0 以上**版本（适配 Android 16/17 QPR 的行为变化）。
-- 系统大版本更新后可能再次失效（历史上 2025-10、2025-12 更新都断过）：在 Shizuku 中**停用服务并重新授权**，再重新“应用配置”。参见 [Pixel IMS issue #423](https://github.com/kyujin-cho/pixel-volte-patch/issues/423)。
-- **5G 已开启但不注册**：把应用内“5G 组网模式”切为**仅 SA**（`carrier_nr_availabilities_int_array` 仅含 SA），重新应用并重启。部分运营商在 NSA+SA 组合下 NR 无法注册，这是社区验证过的解法。
+- 该构建属于 Android 17 QPR2（2026-11 Pixel Drop），补丁级别已包含 CVE-2025-48617 修复：
+  老的 `setprop persist.dbg.*` 方法与“shell 直接调 overrideConfig”均不可用，本应用已按 v3.1 委托机制实现。
+- **委托清理改用带 UID 的签名**：v1.3 已做双签名兼容。若你在旧版本上遇到
+  “报错但配置其实已生效”，就是这个问题。
+- **持久化覆写大概率显示“不支持”**：最新补丁封堵了持久化路径，覆写为非持久化——重启后需重新应用。
+  Shizuku 重连时应用会自动恢复覆写；建议保持 Shizuku 开机自启（无线调试开关保持开启）。
+- Shizuku 请使用 **13.6.0 以上**版本（`CP3A.261005.005` 的实测记录即使用 13.6.0）。
+- 系统大版本更新后可能再次失效（历史上 2025-10、2025-12、2026-10 更新都断过）：
+  在 Shizuku 中**停用服务并重新授权**，再重新“应用配置”。
+  参见 [Pixel IMS issue #423](https://github.com/kyujin-cho/pixel-volte-patch/issues/423)。
+- **5G 已开启但不注册**：把应用内“5G 组网模式”切为**仅 SA**（`carrier_nr_availabilities_int_array` 仅含 SA），
+  重新应用并重启。部分运营商在 NSA+SA 组合下 NR 无法注册，这是社区验证过的解法。
 - Google Play 系统更新（Mainline）不涉及 `com.android.phone`/CarrierConfigLoader（随 OTA 更新），对本机制无影响。
+- 如果覆写已确认写入但 IMS 仍不注册（`OUT_OF_SERVICE`），问题在 radio / eUICC / 运营商侧，
+  不要反复切换覆写开关 —— 参见 [pixel-volte-patch #475](https://github.com/kyujin-cho/pixel-volte-patch/issues/475)。
 
-## 支持机型（v1.1 起）
+## 支持机型
 
 应用会自动识别机型并按能力启用/禁用功能开关：
 
@@ -50,23 +92,26 @@
 | Pixel Tablet（tangorpro） | - | - | 无蜂窝模块，工具不可用 |
 | 非 Pixel 设备 | 视情况 | 视情况 | 机制未经验证，仍可尝试 |
 
-系统版本兼容：Android 12（API 31）起可用——A13+ 走"Instrumentation + shell 权限委托"路径；Android 12 设备自动回退为以 shell 身份直调 `ICarrierConfigLoader`。
+系统版本兼容：Android 12（API 31）起可用——A13+ 走“Instrumentation + shell 权限委托”路径；
+Android 12 设备自动回退为以 shell 身份直调 `ICarrierConfigLoader`。
 
 ## 环境要求
 
-- Pixel 设备（Pixel 3 及以后；Tensor 机型体验最佳），Android 12+（14/15/16/17 已按新版补丁适配）
-- [Shizuku](https://github.com/RikkaApps/Shizuku/releases)（Play 商店或 GitHub 安装），通过**无线调试**启动（无需电脑），或 ADB 启动
+- Pixel 设备（Pixel 3 及以后；Tensor 机型体验最佳），Android 12+
+- [Shizuku](https://github.com/RikkaApps/Shizuku/releases)（Play 商店或 GitHub 安装），
+  通过**无线调试**启动（无需电脑），或 ADB 启动
 - Android 11+ 的“无线调试”开发者选项
 
 ## 使用步骤
 
 1. 安装并打开 Shizuku → 按引导开启“无线调试”并启动 Shizuku 服务；
 2. 安装本应用，打开后授予 Shizuku 权限（弹窗），并允许“电话权限”；
-3. 选择要作用的 SIM（默认全部）；
-4. 按需开关功能（VoLTE / VoNR / 5G / VoWiFi / VT / 跨SIM / UT，默认全开）；
-5. 点击 **应用配置**，等待提示完成；
-6. 开关一次飞行模式（或重启），到 **设置 → 网络和互联网 → SIM 卡** 确认“增强 4G LTE 模式”“5G”等开关已出现；
-7. VoLTE/5G 图标未出现时：确认运营商套餐已开通 VoLTE/5G（大陆三大运营商需在运营商侧开通 VoLTE），稍等几分钟让 IMS 注册。
+3. 在“作用范围”里选择要作用的 SIM（默认全部）；
+4. 按需开关功能（默认全开），较少用的在“高级功能”里；
+5. 点击底部 **应用配置**，等待真实回执；
+6. 开关一次飞行模式（或重启），到 **设置 → 网络和互联网 → SIM 卡** 确认
+   “增强 4G LTE 模式”“5G”等开关已出现；
+7. VoLTE/5G 图标未出现时：确认运营商套餐已开通 VoLTE/5G，稍等几分钟让 IMS 注册。
 
 > 应用内 Shizuku 连接成功后会自动应用一次配置（开机自启 Shizuku 的情况下也能自动恢复非持久化覆写）。
 
@@ -78,31 +123,42 @@
 # 产物：app/build/outputs/apk/debug/app-debug.apk
 ```
 
-- AGP 8.7.0 / Gradle 8.9 / Kotlin 2.0.21 / compileSdk 35 / minSdk 31
+- AGP 8.7.0 / Gradle 8.9 / Kotlin 2.0.21 / compileSdk 36 / targetSdk 36 / minSdk 31
 - 依赖：`dev.rikka.shizuku:api|provider:13.1.5`、`org.lsposed.hiddenapibypass:hiddenapibypass:6.1`
 - `:stub` 模块是编译期桩（compileOnly，不打包），运行时直接使用系统真实类
-- 国内网络构建慢时，可把 `settings.gradle.kts` 里的 `GoogleMaven` 仓库换成 `https://maven.aliyun.com/repository/google`、`mavenCentral()` 换成 `https://maven.aliyun.com/repository/public`
+- 国内网络构建慢时，可把 `settings.gradle.kts` 里的 `GoogleMaven` 仓库换成
+  `https://maven.aliyun.com/repository/google`、`mavenCentral()` 换成
+  `https://maven.aliyun.com/repository/public`
 
 ## 项目结构
 
 ```
 app/src/main/java/com/zt/volte5g/
   ShizukuProvider.kt   # Shizuku 集成：binder 接收、startInstrumentation 发起、版本指纹探测
-  PrivilegedProcess.kt # Instrumentation：shell 身份委托 + CarrierConfig 覆写 + 校验
+  PrivilegedProcess.kt # Instrumentation：shell 身份委托 + CarrierConfig 覆写 + 回读校验 + 结果回执
+  Delegation.kt        # 委托建立/释放的运行时双签名兼容（Android 17 关键点）
+  SystemCompat.kt      # 构建号识别、委托签名探测、兼容分级
   Hidden.kt            # HiddenApiBypass 封装（豁免隐藏 API 限制）
-  Keys.kt              # CarrierConfig 键名 / IMS 常量（字面量，规避 @hide）
-  MainActivity.kt      # 界面：开关、SIM 选择、状态显示
+  Keys.kt              # CarrierConfig 键名 / IMS 常量 / 偏好键（字面量，规避 @hide）
+  MainActivity.kt      # 界面：状态、设备、SIM、开关、高级区、真实回执
 stub/                  # IActivityManager / ITelephony / ServiceManager 等编译期桩
 ```
 
 ## 常见问题
 
-- **应用配置后没有变化**：先开关一次飞行模式；仍不行就重启。非持久化模式在重启后需重新“应用配置”。
-- **“持久化覆写：不支持”**：系统是最新安全补丁，持久化路径被封堵，只能非持久化（每次重启后重新应用）。应用已改为走沙箱路径尽量保住持久化。
-- **VoLTE 开关出现但打不通电话**：VoLTE 需要运营商开通（大陆：发送短信或去营业厅开通 VoLTE）；另外确认 5G/VoLTE 套餐正常。
-- **清除覆写**：把所有开关关掉后点“应用配置”，再开关一次飞行模式即可恢复系统默认配置。
+- **应用后没有变化**：先开关一次飞行模式；仍不行就重启。非持久化模式在重启后需重新“应用配置”。
+- **“持久化覆写：不支持”**：系统是最新安全补丁，持久化路径被封堵，只能非持久化。
+- **提示“已提交，但未全部成功”**：看弹窗里的原因。常见是某张 SIM 被系统拒绝，
+  或 Shizuku 委托未建立 —— 重新授权后重试。
+- **VoLTE 开关出现但打不通电话**：VoLTE 需要运营商开通
+  （大陆：发送短信或去营业厅开通 VoLTE）；另外确认 5G/VoLTE 套餐正常。
+- **清除覆写**：点“高级功能 → 恢复默认配置”，应用后再开关一次飞行模式。
+  只把开关关掉不会丢弃已经写入的其他键。
+- **抓日志**：`adb logcat -s Volte5G` 可看到每次的 `子网结果 / 持久化 / 清理` 诊断行。
 - **安全提示**：本应用仅修改本机运营商配置，不会联网、不需要 Root；所有写入在 Shizuku 授权范围内进行。
 
 ## 免责声明
 
-本项目利用 Android 调试接口修改设备侧运营商配置，仅供学习与个人设备使用。由此产生的任何后果（包括但不限于功能异常、保修问题）由使用者自行承担。请遵守当地法律与运营商条款。
+本项目利用 Android 调试接口修改设备侧运营商配置，仅供学习与个人设备使用。
+由此产生的任何后果（包括但不限于功能异常、保修问题）由使用者自行承担。
+请遵守当地法律与运营商条款。

@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#16695B</color>
+
+    <!-- 状态色（浅色主题） -->
+    <color name="status_ok">#1B6B37</color>
+    <color name="status_warn">#8A5300</color>
+    <color name="status_error">#B3261E</color>
+    <color name="status_idle">#4A4F55</color>
+
+    <color name="status_ok_bg">#1F2E7D32</color>
+    <color name="status_warn_bg">#1FFF9800</color>
+    <color name="status_error_bg">#1FB3261E</color>
+    <color name="status_idle_bg">#1F5F6368</color>
 </resources>

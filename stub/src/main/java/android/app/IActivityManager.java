@@ -16,7 +16,15 @@ public interface IActivityManager extends IInterface {
 
     void startDelegateShellPermissionIdentity(int uid, String[] permissions) throws RemoteException;
 
+    /**
+     * Android 16 及更早的释放接口。
+     * Android 17 起系统侧已改为 [stopDelegateShellPermissionIdentity(int)]，
+     * 旧签名调用会抛 NoSuchMethodError，运行时按实际存在的方法二选一。
+     */
     void stopDelegateShellPermissionIdentity() throws RemoteException;
+
+    /** Android 17+ 的释放接口：释放 start 时授予的同一个 uid */
+    void stopDelegateShellPermissionIdentity(int uid) throws RemoteException;
 
     boolean startInstrumentation(ComponentName className, String profileFile,
                                  int flags, Bundle arguments, IInstrumentationWatcher watcher,

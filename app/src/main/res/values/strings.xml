@@ -3,12 +3,29 @@
     <string name="app_name">Pixel VoLTE/5G 助手</string>
     <string name="subtitle">Shizuku 运营商配置覆写 · 无需 Root · 免费开源</string>
 
-    <string name="device_card_title">设备</string>
-    <string name="status_card_title">状态</string>
+    <!-- 顶部与分区 -->
+    <string name="status_card_title">运行状态</string>
+    <string name="device_card_title">设备与系统</string>
+    <string name="section_target">作用范围</string>
     <string name="section_calls">通话功能</string>
     <string name="section_network">网络功能</string>
+    <string name="section_advanced">高级功能</string>
+    <string name="section_advanced_desc">跨 SIM、补充业务等较少使用的选项</string>
+    <string name="tips_title">使用说明</string>
     <string name="applying">正在应用…</string>
+    <string name="applying_hint">正在通过 Instrumentation 写入运营商配置，请稍候…</string>
 
+    <!-- 通用状态 -->
+    <string name="yes">支持</string>
+    <string name="no">不支持</string>
+    <string name="applied">已应用</string>
+    <string name="not_applied">未应用</string>
+    <string name="unknown">未知</string>
+    <string name="cancel">取消</string>
+    <string name="later">稍后</string>
+    <string name="ok">好</string>
+
+    <!-- 设备 -->
     <string name="unsupported_no_telephony">此设备没有蜂窝网络模块，本工具无法使用</string>
     <string name="unsupported_no_5g">此机型不支持 5G，相关开关已停用</string>
     <string name="untested_device">非 Pixel 机型：机制未经验证，可能不生效</string>
@@ -18,15 +35,25 @@
     <string name="badge_5g_nsa">5G（仅 NSA）</string>
     <string name="badge_no_5g">不支持 5G</string>
     <string name="badge_no_telephony">无蜂窝模块</string>
+    <string name="badge_compat_verified">已适配此系统</string>
+    <string name="badge_compat_expected">按新系统兼容路径运行</string>
+    <string name="badge_compat_legacy">旧系统兼容模式</string>
     <string name="android_version_fmt">Android %1$s（API %2$d）</string>
     <string name="device_name_fmt">%1$s（%2$s）</string>
+    <string name="build_id_fmt">系统构建：%1$s</string>
+    <string name="security_patch_fmt">安全补丁：%1$s</string>
+    <string name="delegate_fmt">权限委托清理：%1$s</string>
+    <string name="build_unknown">无法读取</string>
 
-    <string name="shizuku_card_title">Shizuku 状态</string>
+    <!-- Shizuku 与操作 -->
     <string name="btn_open_shizuku">打开 Shizuku</string>
     <string name="btn_apply">应用配置</string>
     <string name="btn_select_sim">选择 SIM</string>
     <string name="btn_refresh_status">刷新状态</string>
+    <string name="btn_clear">恢复默认配置</string>
+    <string name="btn_clear_desc">丢弃本应用写入的全部覆写，回到运营商原始配置</string>
 
+    <!-- 功能开关 -->
     <string name="features_title">功能开关（写入运营商配置覆写）</string>
     <string name="volte">VoLTE（高清语音）</string>
     <string name="volte_desc">强制开放 VoLTE 能力并在设置中显示“增强 4G LTE 模式”开关</string>
@@ -51,6 +78,7 @@
     <string name="ut">UT（补充业务）</string>
     <string name="ut_desc">允许通过 IMS 执行呼叫转移等补充业务</string>
 
+    <!-- SIM -->
     <string name="sim_slot_plain_fmt">SIM %1$d</string>
     <string name="sim_slot_fmt">SIM %1$d（%2$s）</string>
     <string name="sim_target_fmt">应用到：%1$s</string>
@@ -58,6 +86,7 @@
     <string name="all_sims_desc">应用到所有已插卡的卡槽</string>
     <string name="select_sim">应用到哪张 SIM？</string>
 
+    <!-- Shizuku 状态 -->
     <string name="shizuku_not_running">未运行</string>
     <string name="shizuku_no_permission">未授权</string>
     <string name="shizuku_ready">已就绪</string>
@@ -67,26 +96,38 @@
     <string name="shizuku_no_permission_msg">尚未授予 Shizuku 权限，请在弹窗中允许。</string>
     <string name="persistent_mode_fmt">持久化覆写：%1$s</string>
     <string name="config_status_fmt">配置状态：%1$s</string>
-    <string name="yes">支持</string>
-    <string name="no">不支持</string>
-    <string name="applied">已应用</string>
-    <string name="not_applied">未应用</string>
 
     <string name="shizuku_not_running_msg">Shizuku 未运行。请先在 Shizuku 应用中通过“无线调试”或 ADB 启动服务。</string>
-    <string name="apply_started">已触发应用，正在通过 Instrumentation 写入运营商配置…</string>
+    <string name="apply_started">正在应用，请稍候…</string>
     <string name="apply_success_title">配置已写入</string>
     <string name="apply_success_msg">运营商配置覆写已提交。稍等片刻后，请开关一次飞行模式或重启手机使其完全生效，然后到 设置 → 网络和互联网 → SIM 卡 中查看 VoLTE / 5G 开关。</string>
+    <string name="apply_partial_title">已提交，但未全部成功</string>
+    <string name="apply_partial_msg">%1$d/%2$d 张 SIM 写入成功。\n\n原因：%3$s\n\n可尝试：在 Shizuku 中停用服务并重新授权后再试；或开关一次飞行模式。</string>
+    <string name="apply_failed_title">未能写入配置</string>
+    <string name="apply_failed_msg">原因：%1$s\n\n建议：\n· 确认 Shizuku 正在运行且已授权；\n· 系统更新后请在 Shizuku 中“停用服务 → 重新启动”并重新授权；\n· 仍失败可重启一次后再试。</string>
+    <string name="apply_result_detail">%1$d/%2$d 张 SIM · %3$s · %4$s</string>
+    <string name="apply_persistent_yes">持久化写入</string>
+    <string name="apply_persistent_no">非持久化（重启后需重新应用）</string>
+    <string name="apply_cleared_title">已恢复默认配置</string>
+    <string name="apply_cleared_msg">已清除本应用写入的覆写。开关一次飞行模式后生效。</string>
+    <string name="apply_unknown_title">已提交，等待回执</string>
+    <string name="apply_unknown_msg">写入请求已发出，但未及时收到结果。可在状态栏点“刷新状态”查看，或到 设置 → 网络和互联网 → SIM 卡 中确认。</string>
+    <string name="cleanup_warn">权限委托清理异常（不影响已经写入的配置）</string>
     <string name="goto_network_settings">打开网络设置</string>
-    <string name="later">稍后</string>
-    <string name="cancel">取消</string>
 
-    <string name="tips_title">说明</string>
+    <!-- 最近一次结果 -->
+    <string name="last_apply_none">尚未应用配置</string>
+    <string name="last_apply_ok_fmt">上次应用：%1$s · %2$d/%3$d 张 SIM</string>
+    <string name="last_apply_fail_fmt">上次应用失败：%1$s</string>
+    <string name="last_apply_cleared_fmt">上次操作：恢复默认 · %1$s</string>
+
+    <!-- 说明 -->
     <string name="tips">
-        • 需要先安装并启动 Shizuku（无线调试启动即可，无需 Root），建议使用最新版（13.6 以上，适配 Android 16/17 QPR）。\n
-        • 写入的是“运营商配置覆写”（与 Pixel IMS 同原理），持久化支持视系统安全补丁级别而定；最新补丁上多为非持久化，重启后需重新应用（Shizuku 重连时会自动恢复）。\n
-        • 系统大版本更新后若失效：在 Shizuku 中停用服务 → 重新启动并授权 → 重新点“应用配置”。\n
-        • 5G 开关已开但不注册：尝试把“5G 组网模式”切换为“仅 SA”，应用后重启。\n
-        • VoLTE 是否真正注册还取决于运营商网络与 SIM 开通状态（应用会一并尝试打开 IMS 开通位）。\n
-        • 如开关未生效：开关一次飞行模式；或重启；或稍后重新点击“应用配置”。
+        • 需要先安装并启动 Shizuku（无线调试启动即可，无需 Root），建议 13.6 以上版本。\n
+        • 写入的是“运营商配置覆写”（与 Pixel IMS 同原理）；能否持久化取决于系统安全补丁，最新补丁上多为非持久化，重启后需重新应用（Shizuku 重连时会自动恢复）。\n
+        • 系统更新（如升级到 Android 17 QPR2）后若失效：在 Shizuku 中停用服务 → 重新启动并授权 → 重新“应用配置”。\n
+        • 5G 开关已开但不注册：把“5G 组网模式”切为“仅 SA”，应用后重启。\n
+        • VoLTE 是否真正注册还取决于运营商网络与 SIM 开通状态。\n
+        • 想彻底撤销：点“恢复默认配置”，而不是只把开关关掉。
     </string>
 </resources>

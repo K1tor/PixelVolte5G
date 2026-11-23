@@ -1,4 +1,59 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <style name="Theme.Volte5G" parent="Theme.Material3.DayNight.NoActionBar" />
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <style name="Theme.Volte5G" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
+        <item name="android:windowLightNavigationBar">?attr/isLightTheme</item>
+        <item name="materialCardViewStyle">@style/Widget.Volte5G.Card</item>
+    </style>
+
+    <!-- 卡片：与系统设置一致的“扁平 + 细描边”观感，弱化阴影 -->
+    <style name="Widget.Volte5G.Card" parent="Widget.Material3.CardView.Outlined">
+        <item name="cardCornerRadius">20dp</item>
+        <item name="cardElevation">0dp</item>
+        <item name="contentPadding">20dp</item>
+        <item name="strokeWidth">1dp</item>
+    </style>
+
+    <!-- 分区标题 -->
+    <style name="TextAppearance.Volte5G.Section" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- 开关行：主标题 + 副标题 -->
+    <style name="TextAppearance.Volte5G.RowTitle" parent="TextAppearance.Material3.BodyLarge" />
+    <style name="TextAppearance.Volte5G.RowDesc" parent="TextAppearance.Material3.BodySmall">
+        <item name="android:textColor">?android:attr/textColorSecondary</item>
+    </style>
+
+    <!-- 状态胶囊 -->
+    <style name="Widget.Volte5G.StatusChip" parent="Widget.Material3.Chip.Assist">
+        <item name="chipMinHeight">28dp</item>
+        <item name="chipStartPadding">10dp</item>
+        <item name="chipEndPadding">10dp</item>
+        <item name="android:textAppearance">?attr/textAppearanceLabelMedium</item>
+        <item name="android:textColor">@color/status_idle</item>
+        <item name="chipBackgroundColor">@color/status_idle_bg</item>
+        <item name="chipStrokeWidth">0dp</item>
+        <item name="ensureMinTouchTargetSize">false</item>
+        <item name="android:checkable">false</item>
+    </style>
+
+    <!-- 底部固定的主操作按钮 -->
+    <style name="Widget.Volte5G.PrimaryButton" parent="Widget.Material3.Button">
+        <item name="android:minHeight">52dp</item>
+        <item name="cornerRadius">16dp</item>
+        <item name="android:textAppearance">?attr/textAppearanceTitleSmall</item>
+    </style>
+
+    <style name="Widget.Volte5G.SecondaryButton" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:minHeight">48dp</item>
+        <item name="cornerRadius">14dp</item>
+    </style>
+
+    <dimen name="screen_padding">20dp</dimen>
+    <dimen name="card_gap">12dp</dimen>
+    <dimen name="row_gap">14dp</dimen>
 </resources>
