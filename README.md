@@ -8,6 +8,18 @@
 | --- | --- | --- | --- |
 | ![主界面](docs/screenshots/01-main-light.png) | ![功能开关](docs/screenshots/02-features.png) | ![SIM 选择](docs/screenshots/03-sim-picker.png) | ![深色](docs/screenshots/04-main-dark.png) |
 
+## 安装
+
+推荐走**应用内更新**（装一次之后，后续版本都在应用里完成）：
+
+1. 首次安装：[Releases](https://github.com/K1tor/PixelVolte5G/releases/latest) 下载 APK，
+   或 `adb install -r PixelVolte5G-debug.apk`；
+2. 安装 [Shizuku](https://github.com/RikkaApps/Shizuku/releases)（13.6.0+）并通过无线调试启动；
+3. 打开应用，授予 Shizuku 权限与电话权限；
+4. 之后有新版本时，应用内「应用更新」卡片会提示，点“下载 → 安装”即可覆盖升级。
+
+> 首次通过应用内更新安装时，Android 会要求允许“安装未知应用”；授权后返回应用会自动继续。
+
 ## v1.3 更新内容（适 Android 17 QPR2 / `CP4A.261105.040.A1`）
 
 ### 系统兼容
@@ -38,6 +50,32 @@
   注意这与“把所有开关关掉”不同，是彻底撤销的唯一方式。
 - **不再无条件报成功**：旧版固定等 3 秒就弹“配置已写入”。现改为等待真实回执（最多 12 秒），
   区分成功 / 部分成功 / 失败 / 无回执四种结果。
+
+### 应用内更新
+
+- 应用内检查更新 → 下载 → 校验 SHA-256 → 系统安装器覆盖升级，见下文「应用内更新」。
+
+## 应用内更新
+
+应用内置「应用更新」卡片，不必每次去网页找 APK：
+
+1. 打开应用即**静默检查**一次 GitHub Releases；有新版会弹窗（版本号 + 更新说明），无新版就在卡片里显示“已是最新版本”。
+2. 点「下载」在应用内直接下载，带进度条，可随时取消。
+3. 下载完成后点「安装」，交给系统安装器覆盖升级（首次会引导你打开“允许安装未知应用”）。
+
+实现细节，便于排查：
+
+- 版本比较基于 Release 的 `tag_name`（如 `v1.3`），与 `versionName` 做语义化比较。
+- **下载优先走 `api.github.com` 的附件端点**，失败再退回 `github.com` 的下载地址：
+  国内网络常见 `github.com` 不可达而 `api.github.com` 可用的情形，旧实现会在这里报 `Connection reset`。
+  每个地址自动重试一次。
+- 若 Release 附件带 `digest`（GitHub 会给出 `sha256:...`），下载后**校验 SHA-256**，不一致立即删除，不会安装错误文件。
+- 安装通过 `FileProvider` 把 `cache/update/` 里的 APK 以 `content://` 交给系统安装器，不写公共存储。
+- **升级连续性**：从 v1.2 起的所有 release 都由同一张 Android Debug 证书签名
+  （SHA-256 `ff3c8aa8…`），所以应用内更新可以直接覆盖安装；若你手上是自行改签名的版本，系统会拒绝覆盖，需卸载重装。
+- 更新说明来自 Release 正文，应用内只做 Markdown 精简后**当纯文本显示**，不执行其中任何内容。
+
+> 若一直提示网络失败：通常是 `api.github.com` 也被拦截，此时用「在浏览器中打开」跳转发布页手动下载即可。
 
 ## 原理
 
@@ -141,6 +179,9 @@ app/src/main/java/com/zt/volte5g/
   Hidden.kt            # HiddenApiBypass 封装（豁免隐藏 API 限制）
   Keys.kt              # CarrierConfig 键名 / IMS 常量 / 偏好键（字面量，规避 @hide）
   MainActivity.kt      # 界面：状态、设备、SIM、开关、高级区、真实回执
+  Updater.kt           # 应用内更新：查 release、多地址下载、SHA-256 校验、FileProvider 安装
+  UpdateController.kt  # 更新状态机（后台线程 + 主线程回调）
+  MarkdownLite.kt      # 把 Release 说明精简为可读纯文本
 stub/                  # IActivityManager / ITelephony / ServiceManager 等编译期桩
 ```
 

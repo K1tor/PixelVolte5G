@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -51,6 +52,10 @@ class MainActivity : AppCompatActivity() {
     private var applyStartedAt = 0L
     private var applying = false
 
+    private lateinit var update: UpdateController
+    private var pendingRelease: Updater.Release? = null
+    private var checkingOnResume = false
+
     private val binderReceivedListener = Shizuku.OnBinderReceivedListener {
         runOnUiThread { updateShizukuStatus() }
     }
@@ -72,6 +77,7 @@ class MainActivity : AppCompatActivity() {
         requestReadPhoneStateIfNeeded()
         bindDeviceCard()
         bindAdvancedSection()
+        bindUpdateCard(savedInstanceState)
         loadSwitches()
         bindListeners()
         updateSimRows()
@@ -91,11 +97,14 @@ class MainActivity : AppCompatActivity() {
         updateSimRows()
         // 若应用流程仍在等待回执，继续轮询
         if (applying) pollApplyResult()
+        // 从“安装未知应用”授权页返回时，自动继续安装
+        update.installIfPermitted()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacksAndMessages(null)
+        update.shutdown()
         Shizuku.removeBinderReceivedListener(binderReceivedListener)
         Shizuku.removeBinderDeadListener(binderDeadListener)
         Shizuku.removeRequestPermissionResultListener(permResultListener)
@@ -174,6 +183,155 @@ class MainActivity : AppCompatActivity() {
         binding.groupAdvanced.isVisible = open
         binding.icAdvanced.animate().rotation(if (open) 180f else 0f).setDuration(160).start()
         prefs.edit().putBoolean(Prefs.UI_ADVANCED_OPEN, open).apply()
+    }
+
+    // ---------------------------------------------------------------------
+    // 应用内更新
+    // ---------------------------------------------------------------------
+
+    private fun bindUpdateCard(savedInstanceState: Bundle?) {
+        update = UpdateController(this, object : UpdateController.Listener {
+            override fun onUpdateState(state: UpdateController.State) = renderUpdateState(state)
+        })
+
+        binding.tvUpdateVersion.text =
+            getString(R.string.update_current_fmt, BuildConfig.VERSION_NAME)
+
+        binding.btnCheckUpdate.setOnClickListener { update.check() }
+        binding.btnUpdateAction.setOnClickListener {
+            val hasDownload = binding.btnUpdateAction.tag == TAG_ACTION_INSTALL
+            when {
+                hasDownload -> update.install()
+                else -> pendingRelease?.let { showUpdateDialog(it) } ?: update.check()
+            }
+        }
+        // 首次进入静默检查：有更新才提示，不打扰
+        if (savedInstanceState == null) {
+            checkingOnResume = true
+            update.check(silent = true)
+        }
+    }
+
+    private fun showUpdateDialog(release: Updater.Release) {
+        pendingRelease = release
+        val sizeText = if (release.size > 0) {
+            " · " + getString(R.string.update_size_fmt, readableSize(release.size))
+        } else ""
+        val notes = MarkdownLite.toPlain(release.notes, maxLines = 26)
+        MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.update_dialog_title, release.tag))
+            .setMessage(
+                if (notes.isBlank()) getString(R.string.update_available_fmt, release.tag)
+                else notes + "\n\n" + release.title + sizeText
+            )
+            .setPositiveButton(R.string.update_dialog_download) { _, _ -> update.download() }
+            .setNeutralButton(R.string.update_dialog_open_release) { _, _ ->
+                runCatching {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(RELEASE_PAGE)))
+                }
+            }
+            .setNegativeButton(R.string.update_dialog_later, null)
+            .show()
+    }
+
+    private fun renderUpdateState(state: UpdateController.State) {
+        val b = binding
+        when (state) {
+            is UpdateController.State.Idle -> {
+                b.tvUpdateStatus.setText(R.string.update_idle)
+                b.progressDownload.isVisible = false
+                b.btnCheckUpdate.isEnabled = true
+                b.btnCheckUpdate.setText(R.string.btn_check_update)
+                b.btnUpdateAction.isVisible = false
+                b.tvUpdateNotes.isVisible = false
+            }
+
+            is UpdateController.State.Checking -> {
+                b.tvUpdateStatus.setText(R.string.update_checking)
+                b.progressDownload.isVisible = false
+                b.btnCheckUpdate.isEnabled = false
+                b.btnUpdateAction.isVisible = false
+                b.tvUpdateNotes.isVisible = false
+            }
+
+            is UpdateController.State.UpToDate -> {
+                b.tvUpdateStatus.text = getString(R.string.update_up_to_date, state.version)
+                b.progressDownload.isVisible = false
+                b.btnCheckUpdate.isEnabled = true
+                b.btnCheckUpdate.setText(R.string.btn_check_update)
+                b.btnUpdateAction.isVisible = false
+                b.tvUpdateNotes.isVisible = false
+            }
+
+            is UpdateController.State.Available -> {
+                pendingRelease = state.release
+                b.tvUpdateStatus.text = getString(R.string.update_available_fmt, state.release.tag)
+                b.progressDownload.isVisible = false
+                b.btnCheckUpdate.isEnabled = true
+                b.btnUpdateAction.isVisible = true
+                b.btnUpdateAction.tag = null
+                b.btnUpdateAction.setText(R.string.btn_download_update)
+                val notes = MarkdownLite.toPlain(state.release.notes, maxLines = 6)
+                b.tvUpdateNotes.isVisible = notes.isNotBlank()
+                b.tvUpdateNotes.text = notes
+                // 静默检查发现新版本时，主动弹一次
+                if (checkingOnResume) {
+                    checkingOnResume = false
+                    showUpdateDialog(state.release)
+                }
+            }
+
+            is UpdateController.State.Downloading -> {
+                b.tvUpdateStatus.text =
+                    getString(R.string.update_downloading_fmt, state.release.tag, state.percent)
+                b.progressDownload.isVisible = true
+                b.progressDownload.isIndeterminate = false
+                b.progressDownload.setProgressCompat(state.percent, true)
+                b.btnCheckUpdate.isEnabled = false
+                b.btnUpdateAction.isVisible = true
+                b.btnUpdateAction.tag = null
+                b.btnUpdateAction.setText(R.string.btn_cancel_download)
+                b.btnUpdateAction.setOnClickListener { update.cancelDownload() }
+            }
+
+            is UpdateController.State.Downloaded -> {
+                b.tvUpdateStatus.text = getString(R.string.update_downloaded_fmt, state.release.tag)
+                b.progressDownload.isVisible = false
+                b.btnCheckUpdate.isEnabled = true
+                b.btnUpdateAction.isVisible = true
+                b.btnUpdateAction.tag = TAG_ACTION_INSTALL
+                b.btnUpdateAction.setText(R.string.btn_install_update)
+                // 恢复默认的点击行为（下载态被改成了“取消”）
+                b.btnUpdateAction.setOnClickListener { update.install() }
+            }
+
+            is UpdateController.State.NeedsPermission -> {
+                b.tvUpdateStatus.setText(R.string.update_need_permission)
+                Toast.makeText(this, R.string.update_need_permission, Toast.LENGTH_LONG).show()
+                Updater.openInstallPermission(this)
+            }
+
+            is UpdateController.State.Failed -> {
+                b.tvUpdateStatus.text = state.message
+                b.progressDownload.isVisible = false
+                b.btnCheckUpdate.isEnabled = true
+                b.btnCheckUpdate.setText(R.string.btn_check_update)
+                // 下载失败时可重试下载；检查失败时收起操作按钮
+                val retryDownload = state.release != null && update.latest != null
+                b.btnUpdateAction.isVisible = retryDownload
+                if (retryDownload) {
+                    b.btnUpdateAction.tag = null
+                    b.btnUpdateAction.setText(R.string.btn_download_update)
+                    b.btnUpdateAction.setOnClickListener { update.download() }
+                }
+            }
+        }
+    }
+
+    private fun readableSize(bytes: Long): String = when {
+        bytes >= 1024L * 1024L -> String.format(java.util.Locale.US, "%.1f MB", bytes / 1048576.0)
+        bytes >= 1024L -> String.format(java.util.Locale.US, "%.0f KB", bytes / 1024.0)
+        else -> "$bytes B"
     }
 
     // ---------------------------------------------------------------------
@@ -677,5 +835,7 @@ class MainActivity : AppCompatActivity() {
         private const val REQ_SHIZUKU = 1001
         private const val REQ_READ_PHONE_STATE = 2001
         private const val APPLY_TIMEOUT_MS = 12_000L
+        private const val TAG_ACTION_INSTALL = "action_install"
+        private const val RELEASE_PAGE = "https://github.com/K1tor/PixelVolte5G/releases/latest"
     }
 }

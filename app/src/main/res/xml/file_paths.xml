@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- 应用内更新的 APK 落在 cacheDir/update/，只暴露这一处 -->
+    <cache-path
+        name="updates"
+        path="update/" />
+</paths>
